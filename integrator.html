@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nature in Danger</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            display: block;
+            margin: 20px auto;
+            background-color: rgb(26, 26, 26);
+            width: 90%;
+            height: 40%;
+        }
+        body {
+            background-color: black;
+            color: rgb(7, 95, 13);
+            font-family: 'Lucida Sans Unicode';
+            height: 95vh;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center; font-size: 4vh;">Danger Level</h1>
+    <canvas id="canvas"></canvas>
+    <script>
+        // Simulation Parameters
+        const params = {
+            k: 0.2,      // Decay constant
+            dt: 0.05,    // Time step
+            yMax: 100,   // Maximum y for scaling
+        };
+
+        // Canvas Configuration
+        const canvasConfig = {
+            margin: 20,
+        };
+
+        // State variables
+        let state = {
+            t: 0,          // Initial time
+            y: 50,         // Initial value of y
+            totalLeftShift: 0, // Cumulative leftward movement
+            points: [],    // Array of plotted points
+        };
+
+        // Canvas setup
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        setCanvasSize();
+
+        function setCanvasSize() {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+            canvasConfig.width = canvas.width;
+            canvasConfig.height = canvas.height;
+            canvasConfig.plotWidth = canvas.width - 2 * canvasConfig.margin;
+            canvasConfig.plotHeight = canvas.height - 2 * canvasConfig.margin;
+            canvasConfig.tMidpoint = 10 * (canvasConfig.width / 5 * 4 - canvasConfig.margin) / canvasConfig.plotWidth;
+            canvasConfig.shiftPerStep = (params.dt / 10) * canvasConfig.plotWidth; // Speed of the diagram
+        }
+
+        // Transform functions
+        function transformX(t) {
+            return canvasConfig.margin + (t / 10) * canvasConfig.plotWidth - state.totalLeftShift;
+        }
+
+        function transformY(y) {
+            return canvasConfig.height - canvasConfig.margin - (y / params.yMax) * canvasConfig.plotHeight;
+        }
+
+        // Differential equation solver
+        function solveEquation() {
+            const dydt = -params.k * state.y;
+            state.y += dydt * params.dt;
+            state.t += params.dt;
+        }
+
+        // Drawing functions
+        function drawAxes() {
+            ctx.beginPath();
+            ctx.moveTo(canvasConfig.margin, canvasConfig.margin);
+            ctx.lineTo(canvasConfig.margin, canvasConfig.height - canvasConfig.margin);
+            ctx.lineTo(canvasConfig.width - canvasConfig.margin, canvasConfig.height - canvasConfig.margin);
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+        }
+
+        function drawLine() {
+            if (state.points.length < 2) return; // No line to draw if fewer than 2 points
+
+            ctx.beginPath();
+            ctx.moveTo(state.points[0].x, state.points[0].y);
+            for (let i = 1; i < state.points.length; i++) {
+                ctx.lineTo(state.points[i].x, state.points[i].y);
+            }
+            ctx.strokeStyle = "green";
+            ctx.lineWidth = 1.5; // Adjust line thickness as needed
+            ctx.stroke();
+        }
+
+        function updatePoints() {
+            // Move points left and remove those out of range
+            if (state.t >= canvasConfig.tMidpoint) {
+                state.totalLeftShift += canvasConfig.shiftPerStep; // Increment the cumulative leftward shift
+                for (let i = 0; i < state.points.length; i++) {
+                    state.points[i].x -= canvasConfig.shiftPerStep;
+                }
+                while (state.points.length > 0 && state.points[0].x < canvasConfig.margin) {
+                    state.points.shift();
+                }
+            }
+
+            // Add new point
+            const x = transformX(state.t);
+            const yCoord = transformY(state.y);
+            state.points.push({ x, y: yCoord });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvasConfig.width, canvasConfig.height); // Clear canvas
+            drawAxes();  // Draw axes
+            drawLine();  // Draw the segmented line connecting points
+        }
+
+        // Main loop
+        function solveAndDraw() {
+            solveEquation();  // Solve the differential equation
+            updatePoints();   // Update points and apply shifting
+            draw();           // Draw everything
+
+            // Continue solving
+            requestAnimationFrame(solveAndDraw);
+        }
+
+        // Start the simulation
+        solveAndDraw();
+    </script>
+</body>
+</html>
